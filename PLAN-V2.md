@@ -113,12 +113,77 @@ Formulaire pour ajouter une source:
 
 ---
 
-## 4. Bonus (Optionnel)
+## 4. Recherche Full-Text
 
-- [ ] Recherche full-text dans les sources
-- [ ] Export PDF d'un projet
+### Objectif
+Permettre de rechercher dans tout le contenu des sources.
+
+### Solution
+- Indexer le contenu des fichiers sources
+- Créer un index de recherche (simple LIKE ou SQLite FTS)
+- Page de recherche avec résultats highlightés
+
+### Implémentation
+- Créer `search.php`
+- API: `GET /api/search?q=terme&projet=XXX`
+- Indexer: sources/*.md, definition.md, resumes
+
+### Effort: **3-4 heures**
+
+---
+
+## 5. Export PDF
+
+### Objectif
+Exporter un projet complet en PDF.
+
+### Solution
+- Utiliser une librairie PHP (TCPDF ou dompdf)
+- Générer un PDF avec:
+  - Couverture (titre, description)
+  - Table des matières
+  - Chaque source avec résumé
+
+### Implémentation
+- Créer `export_pdf.php`
+- Option dans page projet: "Exporter en PDF"
+- API: `GET /api/export?projet=XXX&format=pdf`
+
+### Librairie recommandée
+- `tecnickcom/tcpdf` (gratuit, pas de dépendances extrêmes)
+
+### Effort: **3-4 heures**
+
+---
+
+## 6. Tags et Filtres Avancés
+
+### Objectif
+Organiser et filtrer les projets/sources par tags.
+
+### Solution
+- Ajouter système de tags dans definition.md ou fichier tags.json
+- Interface de gestion des tags
+- Filtres multi-critères:
+  - Par tag
+  - Par catégorie
+  - Par date d'ajout
+
+### Implémentation
+- Modifier definition.md pour inclure: `Tags: IA, Formation, 2026`
+- Créer `tags.php` - gestion des tags
+- Ajouter filtres dans `index.php` et `projet.php`
+- API: `GET /api/tags`, `GET /api/sources?tag=IA`
+
+### Effort: **4-5 heures**
+
+---
+
+## 7. Bonus (Optionnel)
+
 - [ ] Statistiques d'utilisation
-- [ ] Tags et filtres avancés
+- [ ] Import/Export de projets (ZIP complet)
+- [ ] Versionnage des sources
 
 ---
 
@@ -167,10 +232,13 @@ recherche/
 
 | Fonctionnalité | Heures |
 |----------------|--------|
-| Markdown | 2-3 |
+| Markdown Rendering | 2-3 |
 | Édition Projet | 3-4 |
-| API + Ajout | 5-6 |
-| **Total** | **10-13** |
+| API + Ajout Sources | 5-6 |
+| Recherche Full-Text | 3-4 |
+| Export PDF | 3-4 |
+| Tags et Filtres | 4-5 |
+| **Total** | **20-26** |
 
 ---
 
