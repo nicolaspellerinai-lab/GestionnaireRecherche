@@ -234,7 +234,12 @@ $all_sources = $sources;
             
             <!-- Détail du projet -->
             <div class="project-detail">
-                <h2><?php echo htmlspecialchars($project_name); ?></h2>
+                <div class="project-header">
+                    <h2><?php echo htmlspecialchars($project_name); ?></h2>
+                    <?php if (is_authenticated()): ?>
+                        <a href="edit_projet.php?projet=<?php echo urlencode($project_name); ?>" class="btn btn-primary">✏️ Modifier</a>
+                    <?php endif; ?>
+                </div>
                 <?php if (!empty($project_description)): ?>
                     <div class="project-description">
                         <?php echo nl2br(htmlspecialchars($project_description)); ?>
@@ -355,6 +360,18 @@ $all_sources = $sources;
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 30px;
+        }
+        
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .project-header h2 {
+            margin: 0;
+            color: #2c3e50;
         }
         
         .project-detail h2 {
