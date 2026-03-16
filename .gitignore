@@ -1,0 +1,21 @@
+# Ignore data folder (contains uploaded projects)
+data/
+temp/
+*.log
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Composer/Vendor (if used)
+vendor/
+composer.lock
+
+# Debug files
+debug*.php
+test*.php
