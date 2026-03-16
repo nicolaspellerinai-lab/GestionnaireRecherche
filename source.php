@@ -90,6 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_authenticated()) {
 $contenu_source = '';
 if (file_exists($source_file)) {
     $contenu_source = file_get_contents($source_file);
+    $contenu_source = renderMarkdown($contenu_source);
 } else {
     $contenu_source = 'Fichier source introuvable. Tried: ' . htmlspecialchars($source_file);
 }
@@ -98,6 +99,7 @@ if (file_exists($source_file)) {
 $resume = '';
 if (file_exists($resume_file)) {
     $resume = file_get_contents($resume_file);
+    $resume = renderMarkdown($resume);
 }
 ?>
 <!DOCTYPE html>
@@ -276,7 +278,7 @@ if (file_exists($resume_file)) {
             <!-- Contenu de la source -->
             <div class="source-content">
                 <h2>Contenu de la source</h2>
-                <div class="source-text"><?php echo htmlspecialchars($contenu_source); ?></div>
+                <div class="source-text"><?php echo $contenu_source; ?></div>
             </div>
             
             <!-- Panneau résumé et métadonnées -->
@@ -331,7 +333,7 @@ if (file_exists($resume_file)) {
                     </form>
                 <?php else: ?>
                     <div class="source-text" style="max-height: 200px; overflow-y: auto;">
-                        <?php echo nl2br(htmlspecialchars($resume)); ?>
+                        <?php echo $resume; ?>
                     </div>
                 <?php endif; ?>
                 

@@ -107,10 +107,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 // Charger la description du projet (definition.md)
 $project_description = '';
+$project_metadata = array(
+    'categorie' => '',
+    'tags' => array()
+);
 if (is_dir($project_path)) {
     $definition_file = $project_path . '/definition.md';
     if (file_exists($definition_file)) {
-        $project_description = file_get_contents($definition_file);
+        $content = file_get_contents($definition_file);
+        
+        // Parser le YAML front matter
+        if (preg_match('/^---\s*\n(.*?)\n---/s', $content, $matches)) {
+            $yaml = $matches[1];
+            
+            if (preg_match('/categorie:\s*(.*)$/m', $yaml, $m)) {
+                $project_metadata['categorie'] = trim($m[1]);
+            }
+            if (preg_match('/tags:\s*(.*)$/m', $yaml, $m)) {
+                $tags_str = trim($m[1]);
+                $project_metadata['tags'] = array_map('trim', explode(',', $tags_str));
+                $project_metadata['tags'] = array_filter($project_metadata['tags']);
+            }
+        }
+        
+        $project_description = renderMarkdown($content);
     }
 }
 
@@ -240,9 +260,32 @@ $all_sources = $sources;
                         <a href="edit_projet.php?projet=<?php echo urlencode($project_name); ?>" class="btn btn-primary">✏️ Modifier</a>
                     <?php endif; ?>
                 </div>
+                
+                <!-- Métadonnées: Catégorie et Tags -->
+                <?php if (!empty($project_metadata['categorie']) || !empty($project_metadata['tags'])): ?>
+                <div class="project-meta">
+                    <?php if (!empty($project_metadata['categorie'])): ?>
+                        <span class="meta-category">
+                            <strong>Catégorie:</strong> 
+                            <a href="index.php?categorie=<?php echo urlencode($project_metadata['categorie']); ?>">
+                                <?php echo htmlspecialchars($project_metadata['categorie']); ?>
+                            </a>
+                        </span>
+                    <?php endif; ?>
+                    <?php if (!empty($project_metadata['tags'])): ?>
+                        <span class="meta-tags">
+                            <strong>Tags:</strong>
+                            <?php foreach ($project_metadata['tags'] as $tag): ?>
+                                <a href="index.php?tag=<?php echo urlencode($tag); ?>" class="tag-badge"><?php echo htmlspecialchars($tag); ?></a>
+                            <?php endforeach; ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+                
                 <?php if (!empty($project_description)): ?>
                     <div class="project-description">
-                        <?php echo nl2br(htmlspecialchars($project_description)); ?>
+                        <?php echo $project_description; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -554,6 +597,47 @@ $all_sources = $sources;
                 margin-right: 0;
                 margin-bottom: 3px;
             }
+        }
+        
+        /* Métadonnées du projet */
+        .project-meta {
+            margin: 15px 0;
+            padding: 12px 0;
+            border-top: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .meta-category, .meta-tags {
+            font-size: 14px;
+        }
+        
+        .meta-category a {
+            color: #7b1fa2;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .meta-category a:hover {
+            text-decoration: underline;
+        }
+        
+        .tag-badge {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 12px;
+            margin-left: 5px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        
+        .tag-badge:hover {
+            background: #bbdefb;
         }
     </style>
 </body>

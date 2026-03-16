@@ -6,6 +6,52 @@
 
 require_once 'config.php';
 
+/**
+ * Parse le YAML front matter d'un fichier definition.md
+ * @param string $content
+ * @return array
+ */
+function parse_definition_metadata($content) {
+    $metadata = array(
+        'titre' => '',
+        'description' => '',
+        'categorie' => '',
+        'tags' => array(),
+        'date_creation' => ''
+    );
+    
+    // Extraire le block YAML
+    if (preg_match('/^---\s*\n(.*?)\n---/s', $content, $matches)) {
+        $yaml = $matches[1];
+        
+        // Parser chaque champ
+        if (preg_match('/titre:\s*(.*)$/m', $yaml, $m)) {
+            $metadata['titre'] = trim($m[1]);
+        }
+        if (preg_match('/description:\s*(.*)$/m', $yaml, $m)) {
+            $metadata['description'] = trim($m[1]);
+        }
+        if (preg_match('/categorie:\s*(.*)$/m', $yaml, $m)) {
+            $metadata['categorie'] = trim($m[1]);
+        }
+        if (preg_match('/tags:\s*(.*)$/m', $yaml, $m)) {
+            $tags_str = trim($m[1]);
+            // Parser les tags (séparés par virgules)
+            $metadata['tags'] = array_map('trim', explode(',', $tags_str));
+            $metadata['tags'] = array_filter($metadata['tags']);
+        }
+        if (preg_match('/date_creation:\s*(.*)$/m', $yaml, $m)) {
+            $metadata['date_creation'] = trim($m[1]);
+        }
+    }
+    
+    return $metadata;
+}
+
+// Récupérer les filtres depuis l'URL
+$filter_tag = isset($_GET['tag']) ? trim($_GET['tag']) : '';
+$filter_categorie = isset($_GET['categorie']) ? trim($_GET['categorie']) : '';
+
 // Traitement de l'upload ZIP
 $message = '';
 $message_type = '';
@@ -151,6 +197,8 @@ if (isset($_GET['message']) && isset($_GET['type'])) {
 
 // Récupérer la liste des projets
 $projects = array();
+$all_tags = array();
+$all_categories = array();
 
 if (is_dir(DATA_PATH)) {
     $dirs = scandir(DATA_PATH);
@@ -158,6 +206,50 @@ if (is_dir(DATA_PATH)) {
     foreach ($dirs as $dir) {
         if ($dir !== '.' && $dir !== '..' && is_dir(DATA_PATH . $dir)) {
             $project_path = DATA_PATH . $dir;
+            
+            // Lire les métadonnées du projet
+            $metadata = array(
+                'titre' => $dir,
+                'description' => '',
+                'categorie' => '',
+                'tags' => array()
+            );
+            
+            $definition_file = $project_path . '/definition.md';
+            if (file_exists($definition_file)) {
+                $content = file_get_contents($definition_file);
+                $metadata = parse_definition_metadata($content);
+                if (empty($metadata['titre'])) {
+                    $metadata['titre'] = $dir;
+                }
+            }
+            
+            // Collecter tous les tags et catégories
+            foreach ($metadata['tags'] as $tag) {
+                if (!empty($tag)) {
+                    $all_tags[$tag] = true;
+                }
+            }
+            if (!empty($metadata['categorie'])) {
+                $all_categories[$metadata['categorie']] = true;
+            }
+            
+            // Appliquer les filtres
+            $include_project = true;
+            
+            // Filtre par tag
+            if (!empty($filter_tag)) {
+                if (!in_array($filter_tag, $metadata['tags'])) {
+                    $include_project = false;
+                }
+            }
+            
+            // Filtre par catégorie
+            if (!empty($filter_categorie)) {
+                if (strcasecmp($metadata['categorie'], $filter_categorie) !== 0) {
+                    $include_project = false;
+                }
+            }
             
             // Compter les fichiers sources (dans le dossier sources/)
             $source_count = 0;
@@ -177,6 +269,10 @@ if (is_dir(DATA_PATH)) {
             
             $projects[] = array(
                 'name' => $dir,
+                'titre' => $metadata['titre'],
+                'description' => $metadata['description'],
+                'categorie' => $metadata['categorie'],
+                'tags' => $metadata['tags'],
                 'date' => $mod_date,
                 'source_count' => $source_count,
                 'path' => $project_path
@@ -189,6 +285,12 @@ if (is_dir(DATA_PATH)) {
         return filemtime($b['path']) - filemtime($a['path']);
     });
 }
+
+// Trier les tags et catégories
+ksort($all_tags);
+ksort($all_categories);
+$all_tags = array_keys($all_tags);
+$all_categories = array_keys($all_categories);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -249,6 +351,39 @@ if (is_dir(DATA_PATH)) {
         <div class="projects-section">
             <h2>Projets (<?php echo count($projects); ?>)</h2>
             
+            <!-- Filtres par tag et catégorie -->
+            <?php if (!empty($all_tags) || !empty($all_categories)): ?>
+            <div class="filters-section">
+                <form method="get" action="" class="filters-form">
+                    <div class="filter-group">
+                        <label for="filter-tag">Tag:</label>
+                        <select id="filter-tag" name="tag" onchange="this.form.submit()">
+                            <option value="">Tous les tags</option>
+                            <?php foreach ($all_tags as $tag): ?>
+                                <option value="<?php echo htmlspecialchars($tag); ?>" <?php echo ($filter_tag === $tag) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($tag); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter-categorie">Catégorie:</label>
+                        <select id="filter-categorie" name="categorie" onchange="this.form.submit()">
+                            <option value="">Toutes les catégories</option>
+                            <?php foreach ($all_categories as $cat): ?>
+                                <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo ($filter_categorie === $cat) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($cat); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php if (!empty($filter_tag) || !empty($filter_categorie)): ?>
+                        <a href="index.php" class="btn btn-small btn-secondary">✕ Effacer les filtres</a>
+                    <?php endif; ?>
+                </form>
+            </div>
+            <?php endif; ?>
+            
             <?php if (empty($projects)): ?>
                 <p class="no-projects">Aucun projet trouvé. Importez un projet ZIP pour commencer.</p>
             <?php else: ?>
@@ -256,6 +391,8 @@ if (is_dir(DATA_PATH)) {
                     <thead>
                         <tr>
                             <th>Projet</th>
+                            <th>Catégorie</th>
+                            <th>Tags</th>
                             <th>Date de modification</th>
                             <th>Sources</th>
                             <th>Actions</th>
@@ -265,7 +402,28 @@ if (is_dir(DATA_PATH)) {
                         <?php foreach ($projects as $project): ?>
                             <tr>
                                 <td class="project-name">
-                                    <strong><?php echo htmlspecialchars($project['name']); ?></strong>
+                                    <strong><?php echo htmlspecialchars($project['titre'] ?: $project['name']); ?></strong>
+                                    <?php if (!empty($project['description'])): ?>
+                                        <br><small class="project-desc"><?php echo htmlspecialchars($project['description']); ?></small>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($project['categorie'])): ?>
+                                        <a href="?categorie=<?php echo urlencode($project['categorie']); ?>" class="category-link">
+                                            <?php echo htmlspecialchars($project['categorie']); ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="no-category">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="project-tags">
+                                    <?php if (!empty($project['tags'])): ?>
+                                        <?php foreach ($project['tags'] as $tag): ?>
+                                            <a href="?tag=<?php echo urlencode($tag); ?>" class="tag-link"><?php echo htmlspecialchars($tag); ?></a>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <span class="no-tags">-</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($project['date']); ?></td>
                                 <td class="source-count"><?php echo $project['source_count']; ?> fichier(s)</td>
@@ -283,3 +441,104 @@ if (is_dir(DATA_PATH)) {
     </div>
 </body>
 </html>
+
+<style>
+    /* Filtres */
+    .filters-section {
+        background: #f8f9fa;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .filters-form {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .filter-group label {
+        font-weight: 600;
+        color: #555;
+        font-size: 14px;
+    }
+    
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        min-width: 150px;
+        cursor: pointer;
+    }
+    
+    .filter-group select:focus {
+        outline: none;
+        border-color: #3498db;
+    }
+    
+    /* Tags dans le tableau */
+    .project-tags {
+        white-space: nowrap;
+    }
+    
+    .tag-link {
+        display: inline-block;
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin: 2px;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+    
+    .tag-link:hover {
+        background: #bbdefb;
+    }
+    
+    .category-link {
+        color: #7b1fa2;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .category-link:hover {
+        text-decoration: underline;
+    }
+    
+    .no-tags, .no-category {
+        color: #999;
+        font-style: italic;
+    }
+    
+    .project-desc {
+        color: #666;
+        font-weight: normal;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .filters-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .filter-group {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .filter-group select {
+            width: 100%;
+        }
+    }
+</style>

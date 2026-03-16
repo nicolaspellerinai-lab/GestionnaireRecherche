@@ -13,11 +13,17 @@ define('DB_NAME', 'gestionnaire_recherche');
 // Configuration Upload
 define('UPLOAD_PASSWORD', 'C3c13stm0np4ss!!!');
 
+// Configuration API
+define('API_KEY', 'gr-api-2024-nicolas-pellerin-secure');
+
 // Chemin du dossier des projets
 define('DATA_PATH', __DIR__ . '/data/');
 
 // Démarrage de la session
 session_start();
+
+// Charger les fonctions utilitaires
+require_once __DIR__ . '/markdown.php';
 
 /**
  * Connexion à la base de données
